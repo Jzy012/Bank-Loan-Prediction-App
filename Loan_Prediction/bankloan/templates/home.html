@@ -1,0 +1,163 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}Loan Prediction{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 text-gray-800">
+    <div class="max-w-5xl mx-auto mt-8 p-6 bg-white shadow rounded-2xl">
+        <header class="mb-6 border-b pb-4">
+            <h1 class="text-3xl font-bold">Loan Prediction System</h1>
+        </header>
+
+     
+
+        {% block content %}
+        <div class>
+            <h2 class="text-2xl font-semibold mb-4">Select a Client</h2>
+            
+            <!-- Dropdown to select a client -->
+        <form method="POST" id="client-form" class="mb-8">
+            {% csrf_token %}
+            <label for="client_select" class="block text-sm font-medium text-gray-700 mb-2">Choose a Client</label>
+            
+            <div class="relative">
+                <select name="client_id" id="client_select"
+                    onchange="this.form.submit()"
+                    class="appearance-none w-full px-4 py-2 pr-10 bg-white border border-gray-300 text-gray-800 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition ease-in-out duration-150">
+                    <option value="">-- Select Client --</option>
+                    {% for client in clients %}
+                        <option value="{{ client.id }}" {% if client.id == selected_id %}selected{% endif %}>{{ client.name }}</option>
+                    {% endfor %}
+                </select>
+
+                <!-- Custom dropdown arrow -->
+                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-400">
+                    <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M5.293 7.707a1 1 0 011.414 0L10 11l3.293-3.293a1 1 0 011.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                    </svg>
+                </div>
+            </div>
+        </form>
+        
+            {% if client %}
+                <!-- Client Details -->
+                <div class="space-y-4">
+                    <div>
+                        <p><strong class="text-gray-700">Name:</strong> {{ client.name }}</p>
+                        <p><strong class="text-gray-700">Contact:</strong> {{ client.contact }}</p>
+                        <p><strong class="text-gray-700">Trust Rating:</strong> {{ trust_rating }}%</p>
+        
+                        <!-- Progress Bar -->
+                        <div class="w-full bg-gray-200 rounded-full h-4 mt-1">
+                            <div class="h-4 rounded-full 
+                                {% if trust_rating >= 80 %}
+                                    bg-green-500
+                                {% elif trust_rating >= 50 %}
+                                    bg-yellow-400
+                                {% else %}
+                                    bg-red-500
+                                {% endif %}" style="width: {{ trust_rating }}%;">
+                            </div>
+                        </div>
+                    </div>
+        
+                    <!-- Eligibility Assessment -->
+                    <div>
+                        <p><strong class="text-gray-700">Eligibility:</strong> 
+                            <span class="{% if eligible %}text-green-600{% else %}text-red-600{% endif %}">
+                                {{ assessment }}
+                            </span>
+                        </p>
+                    </div>
+
+          <!-- Loan History Table -->
+            {% if client %}
+            <h2 class="text-xl font-bold mt-6">Loan History for {{ client.name }}</h2>
+
+            {% if loan_history %}
+                <div class="overflow-x-auto mt-4 bg-white rounded-xl shadow-sm">
+                    <table class="min-w-full text-xs">
+                        <thead>
+                            <tr class="text-left text-gray-500 uppercase tracking-wide text-xs bg-gray-50 rounded-t-xl">
+                                <th class="px-3 py-2 min-w-[120px]">Date Issued</th>
+                                <th class="px-3 py-2 min-w-[100px]">Amount</th>
+                                <th class="px-3 py-2 min-w-[100px]">Duration</th>
+                                <th class="px-3 py-2 min-w-[100px]">Interest Rate</th>
+                                <th class="px-3 py-2 min-w-[120px]">Status</th>
+                                <th class="px-3 py-2 min-w-[120px]">Total Repayment</th>
+                                <th class="px-3 py-2 min-w-[120px]">Monthly Payment</th>
+                                <th class="px-3 py-2 min-w-[150px]">Update Status</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100">
+                            {% for loan in loan_history %}
+                                <tr class="hover:bg-gray-50 transition">
+                                    <td class="px-3 py-2 text-gray-800">{{ loan.date_issued|date:"M d, Y" }}</td>
+                                    <td class="px-3 py-2 text-gray-800">₱{{ loan.amount }}</td>
+                                    <td class="px-3 py-2 text-gray-800">{{ loan.payment_duration }} mos</td>
+                                    <td class="px-3 py-2 text-gray-800">{{ loan.interest_rate }}%</td>
+                                    <td class="px-3 py-2">
+                                        <span class="inline-block px-2 py-1 text-xs font-medium rounded-full
+                                            {% if loan.status == 'Paid' %}
+                                                bg-green-100 text-green-700
+                                            {% elif loan.status == 'Ongoing' %}
+                                                bg-yellow-100 text-yellow-800
+                                            {% else %}
+                                                bg-red-100 text-red-700
+                                            {% endif %}">
+                                            {{ loan.status }}
+                                        </span>
+                                    </td>
+                                    <td class="px-3 py-2 text-gray-800">₱{{ loan.calculate_total_repayment|floatformat:2 }}</td>
+                                    <td class="px-3 py-2 text-gray-800">₱{{ loan.calculate_monthly_payment|floatformat:2 }}</td>
+
+                                    <!-- Update Status Dropdown (Automatic Save on Change) -->
+                                    <td class="px-3 py-2">
+                                        <form action="{% url 'loan_update' loan.id %}" method="post" class="space-x-2 flex items-center">
+                                            {% csrf_token %}
+                                            
+                                            <!-- Dropdown for status -->
+                                            <select name="status" id="status_{{ loan.id }}"
+                                                onchange="this.form.submit()"
+                                                class="block text-xs py-1 px-3 w-24 border border-gray-300 rounded-lg bg-white text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 hover:bg-blue-50">
+                                                <option value="Ongoing" {% if loan.status == 'Ongoing' %}selected{% endif %}>Ongoing</option>
+                                                <option value="Paid" {% if loan.status == 'Paid' %}selected{% endif %}>Paid</option>
+                                                <option value="Overdue" {% if loan.status == 'Overdue' %}selected{% endif %}>Overdue</option>
+                                            </select>
+                                        </form>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p class="mt-4 text-gray-600">No loan history available for this client.</p>
+            {% endif %}
+            {% endif %}
+
+        
+                    <!-- Loan Button -->
+                    <div class="mt-4">
+                        <a href="{% url 'loan_create' client.id %}" 
+                            class="inline-block px-6 py-2 rounded-lg text-white font-semibold transition duration-200
+                            {% if not eligible %}bg-gray-400 cursor-not-allowed pointer-events-none{% else %}bg-blue-600 hover:bg-blue-700{% endif %}">
+                            Apply for Loan
+                        </a>
+                    </div>
+                </div>
+            {% else %}
+                <p class="text-gray-500 mt-4">No client selected.</p>
+            {% endif %}
+        </div>
+
+
+        {% endblock %}
+        
+
+    </div>
+</body>
+</html>
